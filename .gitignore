@@ -192,3 +192,25 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+
+# VSCode 設定
+.vscode/
+
+# 虛擬環境
+venv/
+.venv/
+yolo-env/
+yolov8_2/
+
+# 資料集和輸出資料
+datasets/
+runs/
+repo/
+
+# Checkpoint & log 檔
+*.log
+*.ckpt
+*.pth
+*.pt
+

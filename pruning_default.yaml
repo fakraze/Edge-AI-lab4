@@ -1,0 +1,15 @@
+# pruning_default.yaml
+data: coco.yaml  # coco128-seg.yaml
+batch: 16
+val_batch: 8           # validation batch size (total across GPUs)
+imgsz: 640
+epochs: 5
+save_period: 1
+name: yolov8n-seg-pruning
+
+# pruning_cfg['data']     # dataset path
+# pruning_cfg['batch']    # fine-tune batch size
+# pruning_cfg['imgsz']    # image resolution
+# pruning_cfg['epochs']   # # of epochs per prune step
+# pruning_cfg['save_period']  # how often (in epochs) to save checkpoints
+# pruning_cfg['name']     # run name prefix

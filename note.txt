@@ -1,0 +1,81 @@
+
+
+# yolov8 prune example
+# prune_yolov8n_seg.py
+
+
+# datasets
+
+tutor
+https://docs.ultralytics.com/datasets/detect/coco/
+
+copy coco.yaml from website
+https://github.com/ultralytics/ultralytics/blob/main/ultralytics/cfg/datasets/coco.yaml
+
+# this will train yolo11n.pt, and in the process download coco datasets
+yolo detect train data=coco.yaml model=yolo11n.pt epochs=100 imgsz=640
+
+
+# debug
+
+cd ~/lab/lab4/repo/ultralytics/ultralytics
+
+# Patch the single line in yolo/utils/loss.py
+sed -i "s/self.proj.type(pred_dist.dtype)/self.proj.to(pred_dist.device).type(pred_dist.dtype)/" yolo/utils/loss.py
+
+
+~/lab/lab4/repo/ultralytics/ultralytics/yolo/engine/model.py
+
+# args.imgsz = self.model.args['imgsz']  # use trained imgsz unless custom value is passed
+args.imgsz = getattr(self.model.args, 'imgsz', args.imgsz)
+
+
+~/lab/lab4/repo/ultralytics/ultralytics/yolo/engine/trainer.py
+
+# def _setup_ddp(self, world_size):
+#     """Initializes and sets the DistributedDataParallel parameters for training."""
+#     torch.cuda.set_device(RANK)
+#     self.device = torch.device('cuda', RANK)
+#     LOGGER.info(f'DDP info: RANK {RANK}, WORLD_SIZE {world_size}, DEVICE {self.device}')
+#     os.environ['NCCL_BLOCKING_WAIT'] = '1'  # set to enforce timeout
+#     dist.init_process_group('nccl' if dist.is_nccl_available() else 'gloo',
+#                             timeout=timedelta(seconds=3600),
+#                             rank=RANK,
+#                             world_size=world_size)
+def _setup_ddp(self, world_size):
+       """Initializes and sets the DistributedDataParallel parameters for training."""
+       # allow overriding rank via LOCAL_RANK env var
+       local_rank = int(os.environ.get('LOCAL_RANK', RANK))
+       torch.cuda.set_device(local_rank)
+       self.device = torch.device('cuda', local_rank)
+       LOGGER.info(f'DDP info: RANK {local_rank}, WORLD_SIZE {world_size}, DEVICE {self.device}')
+       os.environ['TORCH_NCCL_BLOCKING_WAIT'] = '1'  # updated env var name
+       dist.init_process_group(
+       'nccl' if dist.is_nccl_available() else 'gloo',
+       timeout=timedelta(seconds=3600),
+       rank=local_rank,
+       world_size=world_size
+       )
+
+
+
+# run
+
+source yolov8_2/bin/activate
+cd ~/lab/lab4
+
+python yolov8_pruning.py \
+       --model yolov8n-seg.pt \
+       --cfg pruning_default.yaml \
+       --iterative-steps 10 \
+       --target-prune-rate 0.3 \
+       --max-map-drop 10 \
+       --device '0'
+
+python yolov8_pruning_origin.py \
+       --model yolov8n-seg.pt \
+       --cfg pruning_default.yaml \
+       --iterative-steps 10 \
+       --target-prune-rate 0.3 \
+       --max-map-drop 1
+
