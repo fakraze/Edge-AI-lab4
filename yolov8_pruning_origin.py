@@ -306,21 +306,23 @@ def prune(args):
     pruning_cfg['batch'] = val_batch
     validation_model = deepcopy(model)
     metric = validation_model.val(**pruning_cfg)
-    init_box_map = metric.box.map
-    init_mask_map = metric.mask.map    # segmentation (mask) mAP
+    # print(metric)
+    # print(dir(metric))
+    init_box_map = metric.results_dict.get('metrics/mAP50-95(B)')
+    init_mask_map = metric.results_dict.get('metrics/mAP50-95(M)')    # segmentation (mask) mAP
+
     macs_list.append(base_macs)
     nparams_list.append(100)
     map_list.append(init_mask_map)
     pruned_map_list.append(init_mask_map)
-    print(f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, \
-          \n  box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}")
+    print(f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, "
+          f"box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}")
 
     # write to log file and flush
     log_f.write(
         f"======================= Start Pruning =======================\n"
-        f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, mAP={init_map: .5f}\n"
         f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, "
-        f"box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}"
+        f"box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}\n"
     )
     log_f.flush()
 
@@ -365,7 +367,7 @@ def prune(args):
         pruned_macs, pruned_nparams = tp.utils.count_ops_and_params(pruner.model, example_inputs.to(model.device))
         current_speed_up = float(macs_list[0]) / pruned_macs
         
-        print(f" =================================================================================== \
+        print(f"=================================================================================== \
               \nAfter pruning iter {i + 1}: \
               \n  MACs: {base_macs / 1e9: .5f} G -> {pruned_macs / 1e9} G, \
               \n  #Params: {base_nparams / 1e6: .5f} M -> {pruned_nparams / 1e6} M, \
@@ -384,8 +386,8 @@ def prune(args):
         pruning_cfg['batch'] = val_batch
         validation_model = YOLO(model.trainer.best)
         metric = validation_model.val(**pruning_cfg)
-        current_box_map = metric.box.map
-        current_mask_map = metric.mask.map  # for segmentation (mask) mAP
+        current_box_map = metric.results_dict.get('metrics/mAP50-95(B)')
+        current_mask_map = metric.results_dict.get('metrics/mAP50-95(M)')    # segmentation (mask) mAP
         # print(f"After fine tuning mAP={current_map}")
         
         elasped_time = time.time() - start_time
