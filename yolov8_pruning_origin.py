@@ -306,17 +306,21 @@ def prune(args):
     pruning_cfg['batch'] = val_batch
     validation_model = deepcopy(model)
     metric = validation_model.val(**pruning_cfg)
-    init_map = metric.box.map
+    init_box_map = metric.box.map
+    init_mask_map = metric.mask.map    # segmentation (mask) mAP
     macs_list.append(base_macs)
     nparams_list.append(100)
-    map_list.append(init_map)
-    pruned_map_list.append(init_map)
-    print(f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, mAP={init_map: .5f}")
+    map_list.append(init_mask_map)
+    pruned_map_list.append(init_mask_map)
+    print(f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, \
+          \n  box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}")
 
     # write to log file and flush
     log_f.write(
         f"======================= Start Pruning =======================\n"
         f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, mAP={init_map: .5f}\n"
+        f"Before Pruning: MACs={base_macs / 1e9: .5f} G, #Params={base_nparams / 1e6: .5f} M, "
+        f"box mAP={init_box_map: .5f}, mask mAP={init_mask_map: .5f}"
     )
     log_f.flush()
 
@@ -380,7 +384,8 @@ def prune(args):
         pruning_cfg['batch'] = val_batch
         validation_model = YOLO(model.trainer.best)
         metric = validation_model.val(**pruning_cfg)
-        current_map = metric.box.map
+        current_box_map = metric.box.map
+        current_mask_map = metric.mask.map  # for segmentation (mask) mAP
         # print(f"After fine tuning mAP={current_map}")
         
         elasped_time = time.time() - start_time
@@ -388,14 +393,16 @@ def prune(args):
         print(f"After pruning iter {i + 1}: \
               \n  MACs: {base_macs / 1e9: .5f} G -> {pruned_macs / 1e9} G, \
               \n  #Params: {base_nparams / 1e6: .5f} M -> {pruned_nparams / 1e6} M, \
-              \n  mAP: {base_macs / 1e9: .5f} -> {current_map} \
+              \n  mask mAP: {base_macs / 1e9: .5f} -> {current_mask_map} \
+              \n  box mAP: {base_macs / 1e9: .5f} -> {current_box_map} \
               \n  speed up: {current_speed_up} \
               \n  elasped_time: {elasped_time // 3600:.0f} hr {elasped_time // 60:.0f} min {elasped_time % 60:.0f} sec")
         
         # write to log file and flush
         log_f.write(
             f"Iter {i+1:02d}: "
-            f"post-finetune mAP = {current_map:.4f}, "
+            f"post-finetune mask mAP = {current_mask_map}, "
+            f"box mAP = {current_box_map:.4f}, "
             f"MACs = {pruned_macs / 1e9} G, "
             f"#Params = {pruned_nparams / 1e6} M, "
             f"speed up = {current_speed_up}, "
@@ -415,7 +422,7 @@ def prune(args):
 
         # save_pruning_performance_graph(nparams_list, map_list, macs_list, pruned_map_list)
 
-        if init_map - current_map > args.max_map_drop:
+        if init_mask_map - current_mask_map > args.max_map_drop:
             print("Pruning early stop")
             break
 

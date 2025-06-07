@@ -3,7 +3,7 @@ data: coco.yaml  # coco128-seg.yaml
 batch: 16
 val_batch: 8           # validation batch size (total across GPUs)
 imgsz: 640
-epochs: 5
+epochs: 4
 save_period: 1
 name: yolov8n-seg-pruning
 
