@@ -207,6 +207,7 @@ yolov8_2/
 datasets/
 runs/
 repo/
+finetune/
 
 # Checkpoint & log 檔
 *.log
