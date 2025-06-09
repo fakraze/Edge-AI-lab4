@@ -79,3 +79,23 @@ python yolov8_pruning_origin.py \
        --target-prune-rate 0.3 \
        --max-map-drop 1
 
+
+=====================================
+
+source yolov8_2/bin/activate
+cd ~/lab/lab4
+
+python finetune_yolov8.py \
+  --model runs/segment/step_8_finetune/weights/best.pt \
+  --data coco.yaml \
+  --epochs 20 \
+  --train-batch 128 \
+  --val-batch 8 \
+  --imgsz 640 \
+  --lr 1e-3 \
+  --device 0,1 \
+  --project finetune \
+  --name step_8 \
+  --save-period 1 \
+  --workers 0
+

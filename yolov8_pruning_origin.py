@@ -398,7 +398,7 @@ def prune(args):
               \n  mask mAP: {base_macs / 1e9: .5f} -> {current_mask_map} \
               \n  box mAP: {base_macs / 1e9: .5f} -> {current_box_map} \
               \n  speed up: {current_speed_up} \
-              \n  elasped_time: {elasped_time // 3600:.0f} hr {elasped_time // 60:.0f} min {elasped_time % 60:.0f} sec")
+              \n  elasped_time: {elasped_time // 3600:.0f} hr {(elasped_time // 60) % 60:.0f} min {elasped_time % 60:.0f} sec")
         
         # write to log file and flush
         log_f.write(
@@ -408,7 +408,7 @@ def prune(args):
             f"MACs = {pruned_macs / 1e9} G, "
             f"#Params = {pruned_nparams / 1e6} M, "
             f"speed up = {current_speed_up}, "
-            f"elasped_time: {elasped_time // 3600:.0f} hr {elasped_time // 60:.0f} min {elasped_time % 60:.0f} sec, "
+            f"elasped_time: {elasped_time // 3600:.0f} hr {(elasped_time // 60) % 60:.0f} min {elasped_time % 60:.0f} sec, "
             f"checkpoint = {model.trainer.best}\n"
         )
         log_f.flush()
