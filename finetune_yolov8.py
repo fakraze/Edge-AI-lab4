@@ -1,4 +1,5 @@
 import argparse
+import time
 import torch
 from ultralytics import YOLO
 from ultralytics.nn.modules import Conv, Bottleneck, C2f, Detect
@@ -56,24 +57,35 @@ def parse_args():
                         help='Run subfolder')
     parser.add_argument('--save-period', type=int, default=1,
                         help='Checkpoint every N epochs')
-    parser.add_argument('--val-period', type=int, default=5,
-                        help='Validate every N epochs')
     return parser.parse_args()
 
 
 def main():
-    import time
     args = parse_args()
-    model = YOLO(args.model)  # includes custom module
-    start_time = time.time()  # track elapsed time
-    # open log file for appending evaluation results
+    # prepare logging
+    start_time = time.time()
     log_f = open('finetune.log', 'a', buffering=1)
-    args = parse_args()
-    model = YOLO(args.model)  # includes custom module
 
-    # Multi-GPU training: single train() call to initialize once
+    # load model
+    model = YOLO(args.model)
+
+    # define callback inside main so it captures start_time & log_f
+    def log_save(trainer):
+        epoch = trainer.epoch
+        metrics = trainer.metrics or {}
+        box_map  = metrics.get('metrics/mAP50-95(B)', 0.0)
+        mask_map = metrics.get('metrics/mAP50-95(M)', 0.0)
+        elapsed  = time.time() - start_time
+        # console
+        print(f"[Epoch {epoch}] saved → box mAP={box_map:.4f}, mask mAP={mask_map:.4f}, elapsed={int(elapsed//3600)} h {int((elapsed//60)%60)} m {int(elapsed%60)} s")
+        # file
+        log_f.write(f"[Epoch {epoch}] box mAP={box_map:.4f}, mask mAP={mask_map:.4f}, elapsed={int(elapsed//3600)} h {int((elapsed//60)%60)} m {int(elapsed%60)} s\n")
+        log_f.flush()
+
+    model.add_callback('on_model_save', log_save)
+
+    # start training
     if ',' in args.device:
-        # Multi-GPU training: single train() call without val_period
         print(f"Multi-GPU mode detected: GPUs {args.device}")
         model.train(
             data=args.data,
@@ -88,57 +100,36 @@ def main():
             workers=args.workers,
             exist_ok=True
         )
-        # After training, run a final validation
-        print("Multi-GPU mode: running final validation...")
+        # final validation (optional)
+        print("Running final validation...")
         torch.cuda.empty_cache()
-        val_ret = model.val(
+        model.val(
             data=args.data,
             batch=args.val_batch,
             imgsz=args.imgsz,
             device=args.device,
             workers=args.workers
         )
-        # extract metrics
-        results = getattr(val_ret, 'results_dict', {})
-        current_box_map = results.get('metrics/mAP50-95(B)')
-        current_mask_map = results.get('metrics/mAP50-95(M)')
-        elapsed_time = time.time() - start_time
-        # log to console
-        print(f"mask mAP = {current_mask_map}, box mAP = {current_box_map:.4f}, elapsed_time: {int(elapsed_time//3600)} hr {int((elapsed_time//60)%60)} min {int(elapsed_time%60)} sec")
-        # write to log file
-        log_f.write(
-            f"mask mAP={current_mask_map}, box mAP={current_box_map:.4f}, elapsed_time={int(elapsed_time//3600)}h{int((elapsed_time//60)%60)}m{int(elapsed_time%60)}s\n"
-        )
-        log_f.flush()
-    # else:
-    #     # Single-GPU or CPU: iterative training per epoch
-    #     for epoch in range(1, args.epochs + 1):
-    #         print(f"Epoch {epoch}/{args.epochs} - Training")
-    #         model.train(
-    #             data=args.data,
-    #             epochs=1,
-    #             batch=args.train_batch,
-    #             imgsz=args.imgsz,
-    #             lr0=args.lr,
-    #             device=args.device,
-    #             project=args.project,
-    #             name=args.name,
-    #             save_period=args.save_period,
-    #             workers=args.workers,
-    #             exist_ok=True
-    #         )
-    #         if epoch % args.val_period == 0:
-    #             print(f"Epoch {epoch} - Validating")
-    #             torch.cuda.empty_cache()
-    #             model.val(
-    #                 data=args.data,
-    #                 batch=args.val_batch,
-    #                 imgsz=args.imgsz,
-    #                 device=args.device,
-    #                 workers=args.workers
-    #             )
-
+    else:
+        # single-GPU or CPU: iterative per-epoch
+        for epoch in range(1, args.epochs + 1):
+            print(f"Epoch {epoch}/{args.epochs} - Training")
+            model.train(
+                data=args.data,
+                epochs=1,
+                batch=args.train_batch,
+                imgsz=args.imgsz,
+                lr0=args.lr,
+                device=args.device,
+                project=args.project,
+                name=args.name,
+                save_period=args.save_period,
+                workers=args.workers,
+                exist_ok=True
+            )
+            
     print("Fine-tuning complete.")
+    log_f.close()
 
 if __name__ == '__main__':
     main()
