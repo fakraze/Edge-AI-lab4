@@ -58,19 +58,10 @@ def _setup_ddp(self, world_size):
        )
 
 
-
 # run
 
 source yolov8_2/bin/activate
 cd ~/lab/lab4
-
-python yolov8_pruning.py \
-       --model yolov8n-seg.pt \
-       --cfg pruning_default.yaml \
-       --iterative-steps 10 \
-       --target-prune-rate 0.3 \
-       --max-map-drop 10 \
-       --device '0'
 
 python yolov8_pruning_origin.py \
        --model yolov8n-seg.pt \
@@ -79,11 +70,26 @@ python yolov8_pruning_origin.py \
        --target-prune-rate 0.3 \
        --max-map-drop 1
 
-
-=====================================
+=======================================
+finetune
 
 source yolov8_2/bin/activate
 cd ~/lab/lab4
+
+python finetune_yolov8.py \
+  --model runs/segment/step_7_finetune/weights/best.pt \
+  --data coco.yaml \
+  --epochs 30 \
+  --train-batch 32 \
+  --val-batch 8 \
+  --imgsz 640 \
+  --lr 1e-3 \
+  --device 0,1 \
+  --project finetune \
+  --name step_8 \
+  --save-period 1 \
+  --workers 2
+
 
 python finetune_yolov8.py \
   --model finetune/step_7/weights/best.pt \
