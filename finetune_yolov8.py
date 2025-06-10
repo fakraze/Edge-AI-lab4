@@ -84,6 +84,27 @@ def main():
 
     model.add_callback('on_model_save', log_save)
 
+
+    # If epochs=0, skip training and just validate once
+    if args.epochs == 0:
+        print("No training epochs requested, running validation only.")
+        torch.cuda.empty_cache()
+        val_ret = model.val(
+            data=args.data,
+            batch=args.val_batch,
+            imgsz=args.imgsz,
+            device=args.device,
+            workers=args.workers
+        )
+        # extract and print metrics
+        results = getattr(val_ret, 'results_dict', {})
+        box_map  = results.get('metrics/mAP50-95(B)', 0.0)
+        mask_map = results.get('metrics/mAP50-95(M)', 0.0)
+        print(f"Validation result → box mAP={box_map:.4f}, mask mAP={mask_map:.4f}")
+        log_f.write(f"[Validation result → box mAP={box_map:.4f}, mask mAP={mask_map:.4f}]\n")
+        log_f.close()
+        return
+    
     # start training
     if ',' in args.device:
         print(f"Multi-GPU mode detected: GPUs {args.device}")
@@ -110,6 +131,17 @@ def main():
             device=args.device,
             workers=args.workers
         )
+        # 2. 取出 metrics
+        results = getattr(val_ret, 'results_dict', {})
+        box_map  = results.get('metrics/mAP50-95(B)', 0.0)
+        mask_map = results.get('metrics/mAP50-95(M)', 0.0)
+        # 3. 印出並寫入 log
+        print(f"Validation result → box mAP={box_map:.4f}, mask mAP={mask_map:.4f}")
+        log_f.write(f"[Validation result → box mAP={box_map:.4f}, mask mAP={mask_map:.4f}]\n")
+        # 4. 關閉 log 並結束
+        log_f.close()
+        return
+    
     else:
         # single-GPU or CPU: iterative per-epoch
         for epoch in range(1, args.epochs + 1):

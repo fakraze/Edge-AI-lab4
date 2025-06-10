@@ -86,17 +86,28 @@ source yolov8_2/bin/activate
 cd ~/lab/lab4
 
 python finetune_yolov8.py \
-  --model runs/segment/step_8_finetune/weights/best.pt \
+  --model finetune/step_7/weights/best.pt \
   --data coco.yaml \
-  --epochs 30 \
+  --epochs 0 \
   --train-batch 32 \
   --val-batch 8 \
   --imgsz 640 \
   --lr 1e-3 \
   --device 0,1 \
   --project finetune \
-  --name step_8 \
+  --name tmp \
   --save-period 1 \
   --workers 2
 
 
+MACs= 6.35504 G -> 4.6216152 G, 
+#Params= 3.40997 M -> 2.126089 M
+prune_ratio: 0.24
+
+Bounding‐box mAP (IoU = 0.50:0.95): 
+0.36426 -> 0.275
+
+Segmentation‐mask mAP (IoU = 0.50:0.95): 
+0.30577 -> 0.229
+
+speed up = 1.3750690451251761
